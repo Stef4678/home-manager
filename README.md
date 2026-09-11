@@ -413,9 +413,9 @@ item and drops the link; the item itself is never modified beyond its tags.
 
 Which identity tag to remove is resolved in order of reliability: the tag recorded
 on the attachment when it was written, then the record's own code, then whatever
-`hm:<kind><n>` tag the item is actually carrying. The last fallback exists because
-relying on the record's code alone once left a stranded tag behind — see
-*Troubleshooting*.
+`hm:<kind><n>` tag the item is actually carrying. The last fallback matters because
+a record that lost its own code would otherwise leave a tag behind that nothing
+could remove.
 
 The todo/done state tag is only removed when no other record still points at the
 item, since one item can legitimately be attached to several records. Detach a
@@ -468,121 +468,21 @@ window still behaves the way you want before relying on it.
 
 ---
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
-### "This method can only be used after the `plugin-create` event is triggered"
-
-**This is Eagle's own message, not the plugin's, and since v1.0.3 it is no longer
-reported as a failure.**
-
-Where it comes from — Eagle's preload defines its renderer-to-renderer channel
-like this (from `app.asar`):
-
-```js
-ipcRenderer.r2r = async (id, channel, data) => {
-    return new Promise((resolve, reject) => {
-        if (id === undefined || id === null) {
-            reject('This method can only be used after the `plugin-create` event is triggered. …');
-            return;
-        }
-        …
-```
-
-`id` is the plugin window's id, which Eagle only assigns once the plugin is
-created. Two consequences:
-
-- Every Eagle API call made before that rejects, and because it is a **`reject()`
-  with a plain string** the rejection carries **no stack trace**.
-- Such rejections can originate from Eagle's *own* internals, not from this
-  plugin. They surface in the plugin window as unhandled rejections, which is how
-  they became visible at all.
-
-What the plugin does about it, so this cannot become a user-facing error:
-
-- The create handler is registered at **script-evaluation time**, because Eagle
-  only honours handlers registered while the page is loading.
-- Readiness is established by **whichever comes first**: the create event, or a
-  probe that proves an Eagle API call actually succeeds.
-- Every Eagle call sits behind that readiness check, and every probe of the
-  `eagle` object is wrapped.
-- An unhandled rejection carrying this string **while the API is not yet usable**
-  is recorded in `diagnostics.log` and logged, and deliberately **not** shown as
-  a failure. It is still shown if it ever appears *after* the API is usable,
-  because then it would be a real problem.
-
-If you do see the toast, check **which build is live**:
-
-- The toast title carries the version: `Something went wrong (v1.0.3)`. Anything
-  at or below `v1.0.2` predates this classification. `(vdev)` meant the manifest
-  never arrived, which `v1.0.3` no longer depends on.
-- **Settings → Eagle → API ready** should read *"yes — Eagle API is usable"*.
-- `plugin-data\todo-bills-manager\diagnostics.log` records a `startup` line with
-  the readiness state, a `readiness` line for how the plugin came alive, and a
-  `host-not-ready` line for each of these host rejections.
-
-### Reading `diagnostics.log`
-
-Eagle does not reliably forward a plugin's console output into
-`%APPDATA%\Eagle\log.log`, and its rejections carry no stack, so the plugin keeps
-its own small, bounded log next to the data file:
-
-```
-%APPDATA%\Eagle\plugin-data\todo-bills-manager\diagnostics.log
-```
-
-It holds a `startup` line per launch (version, readiness, backend, data path),
-how readiness was reached, and the full detail of any failure. It is capped at
-about 200 KB and starts over past that.
-
-### "I have two Home Manager entries", or updates do not take effect
-
-Eagle keeps its plugin list in its own local storage and can register the **same
-plugin from more than one folder** — for example one entry for
-`%APPDATA%\Eagle\Plugins\4b26f1dd-6746-4837-abb8-19f64b6530ad` (installed) and one
-for a source folder you added through *Developer Options*. When that happens, which
-code runs depends on which entry you click, and an entry pointing at a folder that
-has since moved or been emptied will simply fail.
-
-This matters more than usual after the id change: builds up to v1.0.3 used the id
-`todo-bills-manager`, so Eagle may still list that as a **separate** plugin. Remove
-it.
-
-To clean it up:
-
-1. Open Eagle's plugin panel (press `P`).
-2. Remove every **Home Manager** entry — right-click → remove/uninstall.
-3. Install exactly one copy, either with `tools\package.ps1 -Install` or by
-   opening the `.eagleplugin` from `dist/`.
-4. Restart Eagle, then confirm via *Settings → Eagle → API ready* or the
-   `started v…` line in `log.log`.
-
-If you develop from the source folder instead, keep that as your single entry and
-skip the install — but do not keep both.
-
-### Detaching leaves an `hm:…` tag behind
-
-Fixed in **v1.0.2**. Attaching a tag while creating a *new* record allocated the
-tag code on the editor's unsaved draft, and that code was not carried over when
-you clicked **Create**. The record ended up with no code, so on detach it could
-not tell which identity tag was its own and only the `hm:todo` / `hm:done` state
-tag was removed — leaving a stranded tag such as `hm:b1`.
-
-Existing stranded tags heal themselves: on the next load (or a **Sync tags**),
-Home Manager reads the tags back off the attached items and adopts the matching
-code, after which detaching removes everything. If you would rather clean up by
-hand, simply delete the leftover `hm:…` tag in Eagle.
-
-The regression test for this is `#bills:newattach`, which creates a record, attaches
-an item *before* saving, saves, and then asserts that detaching removes every
-`hm:` tag — and that a record which has already lost its code recovers it.
-
-### A click seems to do nothing
-
-Every uncaught error and rejected promise now raises a toast naming the message,
-the origin and the plugin version, and is written to Eagle's log with its full
-text. If a button appears dead and no toast appears, the click never reached a
-handler — please report which button.
-
+| Symptom | What's going on |
+| --- | --- |
+| **Home Manager isn't in the Plugin panel** | Eagle scans the folder that holds `manifest.json` **directly** — a folder wrapped around it is not found. Check the path under *Developer Options*, or install with `tools\package.ps1 -Install`, then restart Eagle. |
+| **Double-clicking the `.eagleplugin` does nothing** | Make sure Eagle is installed and running first. If your system still won't hand the file to Eagle, use **Option B** under Installation and copy the folder in by hand. |
+| **"Your plugin ID format is incorrect. Please ensure that the plugin ID is in a valid UUID format."** | Eagle requires a UUID `id` for plugins installed from a package. This build uses `4b26f1dd-6746-4837-abb8-19f64b6530ad`, and `tools\package.ps1` fails the build if it ever drifts to something else. Every store-installed plugin has a UUID id — only Eagle's own bundled plugins use short ids. |
+| **"This method can only be used after the `plugin-create` event is triggered"** | Eagle's own message, from its renderer-to-renderer channel: it rejects with this plain string when a call is made before the plugin window has been given an id. It can come from Eagle's internals rather than from this plugin. Since **v1.0.3** it is recorded in `diagnostics.log` and deliberately not shown as a failure while the API is still coming up. Seeing it as a toast means you are on an older build. |
+| **How do I know which build is running?** | The error toast carries the version in its title, **Settings → Eagle → API ready** says whether the Eagle API is usable, and the diagnostics log records a `startup` line for every launch. |
+| **Home Manager is listed twice** | Eagle can register the same plugin from more than one folder — the installed copy plus a source folder added through *Developer Options*, for example. Which code runs then depends on which entry you click. Remove every entry in the plugin panel, install exactly one copy, and restart Eagle. |
+| **Updates don't take effect** | Usually the same cause: an entry pointing at a folder that has since moved, or a `.eagleplugin` built from older sources. Remove the extra entries, reinstall from `dist/`, restart Eagle, then confirm the version under **Settings → Eagle**. |
+| **Reminders never appear** | Reminders are evaluated while the plugin window is open, and anything missed is caught up the moment it opens (overdue items re-notify once a day). For notifications with the window closed, set `"serviceMode": true` inside `main` in `manifest.json`. |
+| **An attachment shows a padlock or a `!` badge** | That item belongs to another Eagle library. Eagle only exposes the library that is active right now, so the item cannot be read or tagged until you switch to it — switch, then press **🏷 Sync tags** and it gets tagged. |
+| **Attached items are missing after a restart** | The links live as `hm:` tags on the items themselves rather than in the data file, so press **🏷 Sync tags** (or simply reopen the plugin) and they are rebuilt from the library. |
+| **Something failed and the toast isn't enough** | Eagle doesn't reliably forward a plugin's console output into `%APPDATA%\Eagle\log.log`, and its API rejections carry no stack trace, so Home Manager keeps its own small log next to the data file: `%APPDATA%\Eagle\plugin-data\todo-bills-manager\diagnostics.log`. It holds a `startup` line per launch (version, readiness, backend, data path) and the full detail of any failure. Include it when reporting a problem. |
 ---
 
 ## Contact

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Home Manager</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+    <div class="app">
+        <!-- ============================ SIDEBAR ============================ -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">✓</div>
+                <div class="brand-text">
+                    <div class="brand-name">Home Manager</div>
+                    <div class="brand-sub">Tasks · Bills · Water</div>
+                </div>
+            </div>
+
+            <nav class="nav" id="nav"></nav>
+
+            <div class="sidebar-footer">
+                <div id="libraryChip"></div>
+            </div>
+        </aside>
+
+        <!-- ============================== MAIN ============================= -->
+        <main class="main">
+            <header class="topbar">
+                <div class="page-head">
+                    <h1 class="page-title" id="pageTitle">Dashboard</h1>
+                    <div class="page-sub" id="pageSub">Everything that needs your attention</div>
+                </div>
+
+                <div class="topbar-spacer"></div>
+
+                <div class="search" id="searchWrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" placeholder="Search bills, tasks, notes…" autocomplete="off"
+                        spellcheck="false" />
+                    <button class="search-clear" id="searchClear" title="Clear search">✕</button>
+                </div>
+
+                <button class="btn btn-icon tooltip" id="themeToggle" data-tip="Toggle light / dark">🌗</button>
+                <button class="btn tooltip" id="syncTagsButton"
+                    data-tip="Re-read which Eagle items are tagged as attached to your records">🏷
+                    <span>Sync tags</span></button>
+                <button class="btn btn-primary" id="newButton">＋ New</button>
+            </header>
+
+            <div class="content" id="content">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <span>Starting Home Manager…</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ============================= DRAWER ============================= -->
+    <div class="drawer-backdrop" id="drawerBackdrop"></div>
+    <aside class="drawer" id="drawer" aria-label="Record editor">
+        <div class="drawer-head" id="drawerHead"></div>
+        <div class="drawer-body" id="drawerBody"></div>
+        <div class="drawer-foot" id="drawerFoot"></div>
+    </aside>
+
+    <!-- ============================= MODALS ============================= -->
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+    <div class="toasts" id="toasts"></div>
+
+    <!-- ============================== CODE ============================== -->
+    <script src="js/util.js"></script>
+    <script src="js/store.js"></script>
+    <script src="js/bridge.js"></script>
+    <script src="js/tags.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/views.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>

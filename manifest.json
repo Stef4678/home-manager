@@ -1,0 +1,41 @@
+{
+    "id": "4b26f1dd-6746-4837-abb8-19f64b6530ad",
+    "version": "1.0.4",
+    "platform": "all",
+    "arch": "all",
+    "name": "Home Manager",
+    "logo": "/logo.png",
+    "keywords": [
+        "todo",
+        "to-do",
+        "tasks",
+        "bills",
+        "bills manager",
+        "reminder",
+        "reminders",
+        "water meter",
+        "electricity",
+        "gas",
+        "household",
+        "home",
+        "planner",
+        "budget"
+    ],
+    "devTools": false,
+    "main": {
+        "url": "index.html",
+        "width": 1320,
+        "height": 860,
+        "minWidth": 1000,
+        "minHeight": 660,
+        "backgroundColor": "#0e1116",
+        "resizable": true,
+        "maximizable": true,
+        "minimizable": true,
+        "fullscreenable": true,
+        "frame": true,
+        "alwaysOnTop": false,
+        "multiple": false,
+        "runAfterInstall": true
+    }
+}

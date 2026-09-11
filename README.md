@@ -10,30 +10,6 @@ restarts, re-indexes and even a wiped data file.
 
 ---
 
-## Why it fits Eagle
-
-Two things make this an Eagle plugin rather than a generic to-do app:
-
-1. **Attachments live in Eagle's tag system.** Attach one or many real items from
-   your library — a photo of the meter, a scanned invoice, a receipt — to a task,
-   a bill, a meter or an individual meter reading. Home Manager then writes an
-   identity tag (`hm:t7`) plus a state tag (`hm:todo` / `hm:done`) onto each
-   attached item, **on the item itself**. Those tags are the durable record:
-   every time the plugin loads it reads them back and rebuilds its attachments,
-   so a lost or wiped `data.json` costs you nothing. Search `hm:` in Eagle to see
-   everything Home Manager tracks, right inside Eagle.
-2. **The state travels with the item.** Complete a task or pay a bill and the
-   attached items are retagged `hm:done`; reopen it and they go back to
-   `hm:todo`. Eagle itself always shows you which of your items belong to an open
-   record and which belong to a finished one.
-
-Nothing is rendered, generated or duplicated — Home Manager only ever *links to*
-and *tags* items that already exist in your library.
-
-Everything is stored locally. Nothing is uploaded anywhere.
-
----
-
 ## Screenshots
 
 <table>
@@ -89,60 +65,27 @@ Library path, item and folder counts, Eagle version, plugin version, whether the
 
 ---
 
-## Install
+## Features
 
-The plugin files live at the **root of this project, next to this README**:
-`manifest.json`, `logo.png`, `index.html`, `css/`, `js/`. Everything else
-(`tools/`, `dist/`) is development tooling and is never installed.
+Two things make this an Eagle plugin rather than a generic to-do app:
 
-Eagle loads plugins from `%APPDATA%\Eagle\plugins\<plugin-id>\`, and it uses the
-manifest `id` as that folder name.
+1. **Attachments live in Eagle's tag system.** Attach one or many real items from
+   your library — a photo of the meter, a scanned invoice, a receipt — to a task,
+   a bill, a meter or an individual meter reading. Home Manager then writes an
+   identity tag (`hm:t7`) plus a state tag (`hm:todo` / `hm:done`) onto each
+   attached item, **on the item itself**. Those tags are the durable record:
+   every time the plugin loads it reads them back and rebuilds its attachments,
+   so a lost or wiped `data.json` costs you nothing. Search `hm:` in Eagle to see
+   everything Home Manager tracks, right inside Eagle.
+2. **The state travels with the item.** Complete a task or pay a bill and the
+   attached items are retagged `hm:done`; reopen it and they go back to
+   `hm:todo`. Eagle itself always shows you which of your items belong to an open
+   record and which belong to a finished one.
 
-> **The plugin id must be a UUID.** Eagle rejects packages whose id is not:
-> *"Your plugin ID format is incorrect. Please ensure that the plugin ID is in a
-> valid UUID format."* This plugin's id is
-> `4b26f1dd-6746-4837-abb8-19f64b6530ad`. Every store-installed plugin on a normal
-> machine has a UUID id — only Eagle's own bundled plugins (like `video2gif` or
-> `ai-sdk`) use short ids, because they ship with the app.
-> `tools\package.ps1` now **fails the build** if the id is not a UUID.
+Nothing is rendered, generated or duplicated — Home Manager only ever *links to*
+and *tags* items that already exist in your library.
 
-### Option A — build and install in one step (recommended)
-
-```powershell
-powershell -File tools\package.ps1 -Install
-```
-
-That packages `dist/Home-Manager-<version>.eagleplugin`, wipes and recreates
-`%APPDATA%\Eagle\plugins\4b26f1dd-6746-4837-abb8-19f64b6530ad`, copies the plugin
-files in, and then verifies the installed copy is byte-identical to the source. It
-refuses to package anything that contains `tools/`, `dist/` or `README.md`.
-
-Then press `P` in Eagle (or use the plugin button in the toolbar) and pick
-**Home Manager**. `runAfterInstall` is on, so it also opens by itself the first
-time Eagle sees it. If it does not appear, restart Eagle.
-
-### Option B — copy the files by hand
-
-```powershell
-$dest = "$env:APPDATA\Eagle\plugins\4b26f1dd-6746-4837-abb8-19f64b6530ad"
-New-Item -ItemType Directory -Force $dest | Out-Null
-Copy-Item manifest.json, logo.png, index.html, css, js -Destination $dest -Recurse -Force
-```
-
-### Option C — install the packaged plugin
-
-`dist/Home-Manager-1.0.0.eagleplugin` is a normal ZIP archive with the plugin
-files at its root — the same format Eagle's own *Pack Plugin* produces. Drop it
-on Eagle, or double-click it, to install.
-
-### Option D — let Eagle pack it
-
-Right-click the plugin in Eagle's plugin panel → **Pack Plugin**. That produces
-a `.eagleplugin` you can publish or share.
-
----
-
-## What's in it
+Everything is stored locally. Nothing is uploaded anywhere.
 
 ### Dashboard
 Overdue count, due-in-7-days, outstanding bill total, paid-this-month,
@@ -213,7 +156,210 @@ export a JSON backup, import one, reset, or load the example data.
 
 ---
 
-## Using the Eagle integration
+## Project structure
+
+The plugin files sit at the **root** of this project, next to this README - they
+are exactly the items listed in `$PluginFiles` in `tools/package.ps1` (mirrored in
+`tools/make-preview.js`), and nothing else is ever installed or packaged:
+
+```
+manifest.json               id, window config, keywords
+logo.png                    512x512 plugin icon
+index.html                  window shell
+css/style.css               design system (dark-first, light variant, Eagle theme aware)
+js/util.js                  ids, local-date math, money/number formatting, DOM helpers
+js/store.js                 data model, persistence, recurrence, statuses, alerts
+js/bridge.js                everything that talks to Eagle (items, folders, thumbnails, tags, dialogs)
+js/tags.js                  the tag scheme: stable codes, todo/done tags, reconciliation on load
+js/ui.js                    toasts, modals, drawer, Eagle item picker, attachment strip
+js/views.js                 the seven screens and their editors
+js/app.js                   bootstrap, routing, chrome, reminder engine
+
+README.md                   this file
+LICENSE                     MIT
+assets/                     screenshots used by this README (not packaged)
+dist/                       packaged .eagleplugin builds
+
+tools/                      development tooling (never installed, never packaged)
+  package.ps1               builds the .eagleplugin and optionally installs it
+  test-store.js             headless data-layer test suite (89 assertions)
+  make-logo.ps1             regenerates logo.png
+  make-preview.js           builds tools/preview/app from the plugin files with a mocked Eagle API
+  render-previews.ps1       renders every screen headless and builds a contact sheet
+  verify-screens.ps1        per-screen runtime-error report, in text
+  make-montage.ps1          contact-sheet builder
+  preview/mock-eagle.js     mock Eagle API used by the preview harness
+```
+
+### Development and tests
+
+**Package / install**
+
+```powershell
+powershell -File tools\package.ps1             # package only
+powershell -File tools\package.ps1 -Install    # package and install into Eagle
+```
+
+**Tests** - the data layer runs headless with a mocked Eagle environment and a
+real temp directory for the data file:
+
+```powershell
+node tools\test-store.js
+```
+
+It covers local-date arithmetic (month clamping, DST, leap years), seeding,
+bill/overdue status, payment rolling, task recurrence, meter consumption
+including out-of-order entry and meter resets, reminder timing, notification
+de-duplication, alerts/summary, attachments, backup round-trip and reload from
+disk.
+
+**Visual check** - renders the real UI in headless Chrome against a mock Eagle
+library and builds a contact sheet of every screen in `tools/preview/shots/`.
+A red bar across the top of a tile means that screen threw at runtime; a green
+bar means it was clean.
+
+```powershell
+powershell -File tools\render-previews.ps1     # images + contact sheet
+powershell -File tools\verify-screens.ps1      # text pass/fail per screen
+```
+
+`verify-screens.ps1` also drives two end-to-end flows through the real UI:
+
+- **`#bills:attachflow`** — opens an editor, types into a field, attaches an Eagle
+  item through the real picker, and asserts that the attachment reached the
+  stored record *and* that the typed value survived the refresh.
+- **`#tasks:tagflow`** — the whole tag lifecycle: attach an item and assert the
+  item carries `hm:tN` + `hm:todo`; complete the task and assert it flips to
+  `hm:done`; then **wipe the local attachment link** and assert it is recovered
+  from the Eagle tag alone; then detach and assert the tags are stripped.
+- **`#dashboard:latecreate` / `#tasks:latecreate`** — a strict host mode where the
+  mock refuses every Eagle API call (throwing Eagle's exact error) and fires
+  `plugin-create` 2.2s late. This guards the rule that nothing may touch the
+  Eagle API before that event.
+- **`#dashboard:missedcreate` / `#tasks:missedcreate`** — a stricter mode where
+  the host **never** delivers `plugin-create` at all, modelling a handler
+  registered too late. The plugin must still detect readiness by probing and
+  write its tags. Remove the probing and this test fails with *"the plugin never
+  became usable even though the Eagle API was callable"*.
+
+The mock Eagle API implements `save()` against a real in-memory item list and
+filters `item.get({ tags })` the way Eagle does, so those assertions test actual
+tag round-tripping rather than a stub.
+
+Note: headless Chrome needs named-pipe IPC, so these must run outside a
+restricted file sandbox.
+
+---
+
+## Privacy & data
+
+**Nothing leaves your machine.** There are no accounts, no telemetry, no
+analytics and no network requests of any kind — the plugin is plain local code
+talking to Eagle's own API. Only two things are ever written:
+
+1. its own data file and diagnostics log, listed below;
+2. the `hm:` tags it adds to the items **you** choose to attach, which are
+   removed again when you detach.
+
+Files it keeps, next to Eagle's own plugin data:
+
+```
+%APPDATA%\Eagle\plugin-data\todo-bills-manager\data.json
+%APPDATA%\Eagle\plugin-data\todo-bills-manager\diagnostics.log
+```
+
+The folder keeps the readable name `todo-bills-manager` rather than the plugin's
+UUID, so it is obvious what it belongs to and so data written before the id
+changed is still found.
+
+Written atomically (temp file + rename) and debounced while typing. The data path
+comes from Eagle, which refuses API access until the plugin is created — so if the
+path is not available yet the plugin starts on `localStorage` and **migrates to
+the file as soon as Eagle is ready**. Memory is the last resort. The active
+backend and path are shown in **Settings → Eagle**.
+
+**This file is a cache, not the source of truth for attachments.** The links
+between your records and your Eagle items live as `hm:` tags on the Eagle items
+themselves, so losing this file costs you the record titles, amounts and due
+dates — not the attachments, which are re-read from the library on the next
+load.
+
+Use **Settings → Your data → Export backup** for a portable JSON copy.
+
+---
+
+## Requirements
+
+- **Eagle 4.0 or newer.** Plugin support arrived in Eagle 4.0; this plugin is built
+  against the documented Plugin API and verified on **Eagle 4.0.0 build 23**
+  (Windows).
+  - Live theme following wants **build 12+**, and `eagle.item.select()` (used by
+    the "select in Eagle" button) wants **build 12+**.
+- **Windows, macOS or Linux.** The manifest declares `platform: all` and
+  `arch: all`; nothing is platform-specific.
+- **No runtime dependencies and no build step.** The plugin is plain HTML, CSS and
+  JavaScript, using Eagle's own API plus the Node `fs` module Eagle already
+  provides. There is nothing to `npm install` before using it.
+- **A local Eagle library**, since attachments come from your own items.
+- **Development only:** Node.js (test suite, `tools/test-store.js`) and
+  PowerShell 5.1+ (`tools/package.ps1`).
+
+---
+
+## Installation
+
+The plugin files live at the **root of this project, next to this README**:
+`manifest.json`, `logo.png`, `index.html`, `css/`, `js/`. Everything else
+(`tools/`, `dist/`) is development tooling and is never installed.
+
+Eagle loads plugins from `%APPDATA%\Eagle\plugins\<plugin-id>\`, and it uses the
+manifest `id` as that folder name.
+
+> **The plugin id must be a UUID.** Eagle rejects packages whose id is not:
+> *"Your plugin ID format is incorrect. Please ensure that the plugin ID is in a
+> valid UUID format."* This plugin's id is
+> `4b26f1dd-6746-4837-abb8-19f64b6530ad`. Every store-installed plugin on a normal
+> machine has a UUID id — only Eagle's own bundled plugins (like `video2gif` or
+> `ai-sdk`) use short ids, because they ship with the app.
+> `tools\package.ps1` now **fails the build** if the id is not a UUID.
+
+### Option A — build and install in one step (recommended)
+
+```powershell
+powershell -File tools\package.ps1 -Install
+```
+
+That packages `dist/Home-Manager-<version>.eagleplugin`, wipes and recreates
+`%APPDATA%\Eagle\plugins\4b26f1dd-6746-4837-abb8-19f64b6530ad`, copies the plugin
+files in, and then verifies the installed copy is byte-identical to the source. It
+refuses to package anything that contains `tools/`, `dist/` or `README.md`.
+
+Then press `P` in Eagle (or use the plugin button in the toolbar) and pick
+**Home Manager**. `runAfterInstall` is on, so it also opens by itself the first
+time Eagle sees it. If it does not appear, restart Eagle.
+
+### Option B — copy the files by hand
+
+```powershell
+$dest = "$env:APPDATA\Eagle\plugins\4b26f1dd-6746-4837-abb8-19f64b6530ad"
+New-Item -ItemType Directory -Force $dest | Out-Null
+Copy-Item manifest.json, logo.png, index.html, css, js -Destination $dest -Recurse -Force
+```
+
+### Option C — install the packaged plugin
+
+`dist/Home-Manager-1.0.0.eagleplugin` is a normal ZIP archive with the plugin
+files at its root — the same format Eagle's own *Pack Plugin* produces. Drop it
+on Eagle, or double-click it, to install.
+
+### Option D — let Eagle pack it
+
+Right-click the plugin in Eagle's plugin panel → **Pack Plugin**. That produces
+a `.eagleplugin` you can publish or share.
+
+---
+
+## Usage
 
 ### Attach items from your library
 Open any task, bill or meter → **Attached Eagle items** → **+ From Eagle**
@@ -291,9 +437,7 @@ refreshes.
 > library that is active in Eagle right now. Switch libraries and the plugin
 > follows (you get a "Library changed" notice and an automatic re-sync).
 
----
-
-## Keyboard shortcuts
+### Keyboard shortcuts
 
 | Key | Action |
 | --- | --- |
@@ -305,32 +449,22 @@ refreshes.
 | `r` | Reminders |
 | `Esc` | Close dialog / drawer, or clear search |
 
----
+### Making it a background service
 
-## Where your data lives
+To keep reminders running even with the plugin window closed, add
+`"serviceMode": true` to the `main` block of `manifest.json`:
 
+```json
+"main": {
+    "serviceMode": true,
+    "url": "index.html",
+    ...
+}
 ```
-%APPDATA%\Eagle\plugin-data\todo-bills-manager\data.json
-%APPDATA%\Eagle\plugin-data\todo-bills-manager\diagnostics.log
-```
 
-The folder keeps the readable name `todo-bills-manager` rather than the plugin's
-UUID, so it is obvious what it belongs to and so data written before the id
-changed is still found.
-
-Written atomically (temp file + rename) and debounced while typing. The data path
-comes from Eagle, which refuses API access until the plugin is created — so if the
-path is not available yet the plugin starts on `localStorage` and **migrates to
-the file as soon as Eagle is ready**. Memory is the last resort. The active
-backend and path are shown in **Settings → Eagle**.
-
-**This file is a cache, not the source of truth for attachments.** The links
-between your records and your Eagle items live as `hm:` tags on the Eagle items
-themselves, so losing this file costs you the record titles, amounts and due
-dates — not the attachments, which are re-read from the library on the next
-load.
-
-Use **Settings → Your data → Export backup** for a portable JSON copy.
+Eagle then starts the plugin with the application instead of on click. Note that
+Eagle treats service plugins as resident background processes, so verify the
+window still behaves the way you want before relying on it.
 
 ---
 
@@ -451,120 +585,18 @@ handler — please report which button.
 
 ---
 
-## Making it a background service
+## Contact
 
-To keep reminders running even with the plugin window closed, add
-`"serviceMode": true` to the `main` block of `manifest.json`:
+Questions, bug reports and feature requests are welcome:
 
-```json
-"main": {
-    "serviceMode": true,
-    "url": "index.html",
-    ...
-}
-```
-
-Eagle then starts the plugin with the application instead of on click. Note that
-Eagle treats service plugins as resident background processes, so verify the
-window still behaves the way you want before relying on it.
-
----
-
-## Project layout
-
-The plugin files sit at the **root** of this project, next to this README - they
-are exactly the items listed in `$PluginFiles` in `tools/package.ps1` (mirrored in
-`tools/make-preview.js`), and nothing else is ever installed or packaged:
-
-```
-manifest.json               id, window config, keywords
-logo.png                    512x512 plugin icon
-index.html                  window shell
-css/style.css               design system (dark-first, light variant, Eagle theme aware)
-js/util.js                  ids, local-date math, money/number formatting, DOM helpers
-js/store.js                 data model, persistence, recurrence, statuses, alerts
-js/bridge.js                everything that talks to Eagle (items, folders, thumbnails, tags, dialogs)
-js/tags.js                  the tag scheme: stable codes, todo/done tags, reconciliation on load
-js/ui.js                    toasts, modals, drawer, Eagle item picker, attachment strip
-js/views.js                 the seven screens and their editors
-js/app.js                   bootstrap, routing, chrome, reminder engine
-
-README.md                   this file
-LICENSE                     MIT
-assets/                     screenshots used by this README (not packaged)
-dist/                       packaged .eagleplugin builds
-
-tools/                      development tooling (never installed, never packaged)
-  package.ps1               builds the .eagleplugin and optionally installs it
-  test-store.js             headless data-layer test suite (89 assertions)
-  make-logo.ps1             regenerates logo.png
-  make-preview.js           builds tools/preview/app from the plugin files with a mocked Eagle API
-  render-previews.ps1       renders every screen headless and builds a contact sheet
-  verify-screens.ps1        per-screen runtime-error report, in text
-  make-montage.ps1          contact-sheet builder
-  preview/mock-eagle.js     mock Eagle API used by the preview harness
-```
-
-## Development
-
-**Package / install**
-
-```powershell
-powershell -File tools\package.ps1             # package only
-powershell -File tools\package.ps1 -Install    # package and install into Eagle
-```
-
-**Tests** - the data layer runs headless with a mocked Eagle environment and a
-real temp directory for the data file:
-
-```powershell
-node tools\test-store.js
-```
-
-It covers local-date arithmetic (month clamping, DST, leap years), seeding,
-bill/overdue status, payment rolling, task recurrence, meter consumption
-including out-of-order entry and meter resets, reminder timing, notification
-de-duplication, alerts/summary, attachments, backup round-trip and reload from
-disk.
-
-**Visual check** - renders the real UI in headless Chrome against a mock Eagle
-library and builds a contact sheet of every screen in `tools/preview/shots/`.
-A red bar across the top of a tile means that screen threw at runtime; a green
-bar means it was clean.
-
-```powershell
-powershell -File tools\render-previews.ps1     # images + contact sheet
-powershell -File tools\verify-screens.ps1      # text pass/fail per screen
-```
-
-`verify-screens.ps1` also drives two end-to-end flows through the real UI:
-
-- **`#bills:attachflow`** — opens an editor, types into a field, attaches an Eagle
-  item through the real picker, and asserts that the attachment reached the
-  stored record *and* that the typed value survived the refresh.
-- **`#tasks:tagflow`** — the whole tag lifecycle: attach an item and assert the
-  item carries `hm:tN` + `hm:todo`; complete the task and assert it flips to
-  `hm:done`; then **wipe the local attachment link** and assert it is recovered
-  from the Eagle tag alone; then detach and assert the tags are stripped.
-- **`#dashboard:latecreate` / `#tasks:latecreate`** — a strict host mode where the
-  mock refuses every Eagle API call (throwing Eagle's exact error) and fires
-  `plugin-create` 2.2s late. This guards the rule that nothing may touch the
-  Eagle API before that event.
-- **`#dashboard:missedcreate` / `#tasks:missedcreate`** — a stricter mode where
-  the host **never** delivers `plugin-create` at all, modelling a handler
-  registered too late. The plugin must still detect readiness by probing and
-  write its tags. Remove the probing and this test fails with *"the plugin never
-  became usable even though the Eagle API was callable"*.
-
-The mock Eagle API implements `save()` against a real in-memory item list and
-filters `item.get({ tags })` the way Eagle does, so those assertions test actual
-tag round-tripping rather than a stub.
-
-Note: headless Chrome needs named-pipe IPC, so these must run outside a
-restricted file sandbox.
+GitHub: [Stef4678/home-manager](https://github.com/Stef4678/home-manager)
+Email: [stefaninfp@gmail.com](mailto:stefaninfp@gmail.com)
 
 ---
 
 ## License
 
-MIT — do whatever you like with it.
+Released under the MIT License.
+
+MIT © 2026 Kerekes Stefan
+

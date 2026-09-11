@@ -490,6 +490,7 @@ window still behaves the way you want before relying on it.
 Questions, bug reports and feature requests are welcome:
 
 GitHub: [Stef4678/home-manager](https://github.com/Stef4678/home-manager)
+
 Email: [stefaninfp@gmail.com](mailto:stefaninfp@gmail.com)
 
 ---
